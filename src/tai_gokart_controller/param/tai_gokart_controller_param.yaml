@@ -30,7 +30,7 @@
     sensor_timeout_ms: 100  # timeout between two sensor pollings
 
     # joystick testing
-    enable_js_sub: true
+    enable_js_sub: false
 
     js_throttle_axis: 3
     js_brake_axis: 3
