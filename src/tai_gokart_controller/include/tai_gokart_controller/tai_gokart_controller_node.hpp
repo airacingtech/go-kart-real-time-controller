@@ -22,6 +22,9 @@
 #include "tai_gokart_msgs/msg/gkc_command.hpp"
 #include "tai_gokart_msgs/msg/gkc_state.hpp"
 
+#include "race_msgs/msg/steering_report.hpp"
+#include "race_msgs/msg/vehicle_control_command.hpp"
+
 #include "tai_gokart_controller/tai_gokart_interface.hpp"
 
 namespace tritonai
@@ -32,6 +35,8 @@ using tai_gokart_msgs::msg::GkcCommand;
 using tai_gokart_msgs::msg::GkcState;
 using rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface;
 using sensor_msgs::msg::Joy;
+using race_msgs::msg::SteeringReport;
+using race_msgs::msg::VehicleControlCommand;
 
 class GkcNode : public rclcpp_lifecycle::LifecycleNode
 {
@@ -54,7 +59,9 @@ public:
 
 private:
   rclcpp_lifecycle::LifecyclePublisher<GkcState>::SharedPtr state_pub_;
+  rclcpp_lifecycle::LifecyclePublisher<SteeringReport>::SharedPtr steering_pub_;
   rclcpp::Subscription<GkcCommand>::SharedPtr cmd_sub_;
+  rclcpp::Subscription<VehicleControlCommand>::SharedPtr vehicle_cmd_sub_;
   rclcpp::Subscription<Joy>::SharedPtr joy_sub_;
   rclcpp::TimerBase::SharedPtr state_pub_timer_;
   std::unique_ptr<GkcInterface> interface_;
@@ -62,6 +69,7 @@ private:
 
 
   void cmd_callback(const GkcCommand::SharedPtr cmd_msg);
+  void vehicle_cmd_callback(const VehicleControlCommand::SharedPtr cmd_msg);
   void joy_callback(const Joy::SharedPtr joy_msg);
   void state_pub_timer_callback();
   void dump_logs();

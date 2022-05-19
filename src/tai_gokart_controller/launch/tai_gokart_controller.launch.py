@@ -20,6 +20,10 @@ def generate_launch_description():
             executable='tai_gokart_controller_node',
             name='tai_gokart_controller_node',
             parameters=[gkc_config],
+            remappings=[
+                ('steering_report', '/vehicle/steering_report'),
+                ('vehicle_cmd', '/auto/raw_command'),
+            ],
             emulate_tty=True,
             output='screen'
         ),

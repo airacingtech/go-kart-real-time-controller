@@ -63,11 +63,17 @@ LifecycleNodeInterface::CallbackReturn GkcNode::on_configure(
   if (first_time) {
     double sensor_pub_interval = 1.0 / declare_parameter<int32_t>("sensor_pub_hz", 100);
     state_pub_ = create_publisher<GkcState>("gkc_state", rclcpp::QoS{10});
+    steering_pub_ = create_publisher<SteeringReport>("steering_report", rclcpp::QoS{10});
     state_pub_->on_activate();
+    steering_pub_->on_activate();
     cmd_sub_ =
       create_subscription<GkcCommand>(
-      "gkc_cmd", rclcpp::QoS{10},
+      "gkc_cmd", rclcpp::SensorDataQoS(),
       std::bind(&GkcNode::cmd_callback, this, _1));
+    vehicle_cmd_sub_ =
+      create_subscription<VehicleControlCommand>(
+      "vehicle_cmd", rclcpp::SensorDataQoS(),
+      std::bind(&GkcNode::vehicle_cmd_callback, this, _1));
     state_pub_timer_ = create_timer(
       this, get_clock(), rclcpp::duration<float>(sensor_pub_interval), [this] {
         state_pub_timer_callback();
@@ -215,6 +221,22 @@ void GkcNode::cmd_callback(const GkcCommand::SharedPtr cmd_msg)
   }
 }
 
+void GkcNode::vehicle_cmd_callback(const VehicleControlCommand::SharedPtr cmd_msg)
+{
+  if (cmd_msg->lon_control_type == VehicleControlCommand::LON_CONTROL_THROTTLE)
+  {
+    RCLCPP_WARN_THROTTLE(get_logger(), *get_clock(), 500, "Control is throttle mode. Must use speed command.");
+    return;
+  }
+  auto pkt = ControlGkcPacket();
+  pkt.throttle = cmd_msg->speed_cmd;
+  pkt.steering = cmd_msg->steering_cmd;
+  pkt.brake = 0.0;
+  if (!interface_->send_control(pkt)) {
+    RCLCPP_WARN_THROTTLE(get_logger(), *get_clock(), 500, "Failed to send control.");
+  }
+}
+
 void GkcNode::joy_callback(const Joy::SharedPtr joy_msg)
 {
   auto cmd_msg = std::make_shared<GkcCommand>();
@@ -257,6 +279,12 @@ void GkcNode::state_pub_timer_callback()
       state.state = static_cast<uint8_t>(interface_->get_state());
       state.stamp = get_clock()->now();
       state_pub_->publish(state);
+
+      SteeringReport report;
+      report.stamp = state.stamp;
+      report.front_wheel_angle_rad = state.steering_angle_rad;
+      report.front_wheel_angle_rad_cmd = state.servo_angle_rad;
+      steering_pub_->publish(report);
     }
   }
 
